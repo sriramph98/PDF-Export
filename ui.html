@@ -170,6 +170,9 @@
             // Remove frame from array and update list
             frames = frames.filter((f) => f.id !== frame.id);
             updateFrameList(frames);
+
+            // Notify parent (Code.ts) to sync frame removal
+            parent.postMessage({ pluginMessage: { type: 'remove-frame', frameId: frame.id } }, '*');
           };
           frameInfo.appendChild(removeBtn);
 

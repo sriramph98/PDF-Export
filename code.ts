@@ -26,21 +26,25 @@ figma.ui.onmessage = async (msg) => {
     // Remove frame from the `frames` array
     const frameToRemove = msg.frameId;
 
-    // Log to check the frame being removed
-    console.log("Removing frame with id:", frameToRemove);
-
-    // Filter the frames array and remove the frame by id
+    // Remove frame from array and ensure proper update
     frames = frames.filter((frame) => frame.id !== frameToRemove); // Remove by id
 
     // Log to check the updated frames array
     console.log("Updated frames after deletion:", frames);
 
-    // Ensure the list is updated properly after deletion
+    // Send updated frames to the UI
     figma.ui.postMessage({ type: 'update-frames', frames });
   } else if (msg.type === 'export-pdf') {
+    // Use only the current frames array for export
     const reorderedFrames = msg.frames
+      .filter((frame) => frames.some((existingFrame) => existingFrame.id === frame.id)) // Ensure only present frames are exported
       .map((frame) => figma.currentPage.findOne((node) => node.id === frame.id))
       .filter(Boolean); // Filter out null values
+
+    if (reorderedFrames.length === 0) {
+      figma.notify("No frames to export.");
+      return;
+    }
 
     const pdfPages: Uint8Array[] = [];
     for (const frame of reorderedFrames) {
