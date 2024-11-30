@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Export Selected Frames</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Inter Tight', sans-serif;
+      font-size: 12px;
+      color: rgba(0, 0, 0, 0.6);
+      padding: 20px;
+      background-color: #f9f9f9;
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      box-sizing: border-box;
+      overflow: hidden;
+    }
+    h1 {
+      font-size: 12px;
+      margin-bottom: 10px;
+      color: rgba(0, 0, 0, 0.6);
+      line-height: 1.5;
+    }
+    h1 strong {
+      color: rgba(0, 0, 0, 1);
+    }
+    #frame-list-container {
+      flex-grow: 1;
+      overflow-y: auto;
+      margin-bottom: 20px;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      background-color: #fff;
+      position: relative;
+      padding: 10px;
+    }
+    #frame-list {
+      list-style-type: none;
+      padding: 0;
+      margin: 0;
+    }
+    #placeholder {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      color: rgba(0, 0, 0, 0.6);
+      font-size: 14px;
+      display: none;
+      text-align: center;
+    }
+    li {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px;
+      border-bottom: 1px solid #ddd;
+      cursor: grab;
+    }
+    li:hover {
+      background-color: #f1f1f1;
+    }
+    .frame-info {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+    }
+    .remove-btn {
+      cursor: pointer;
+      background: none;
+      border: none;
+      font-size: 20px;
+      color: rgba(0, 0, 0, 0.6);
+      padding: 0;
+      width: auto;
+    }
+    .remove-btn:hover {
+      color: red;
+    }
+    .material-symbols-outlined {
+      font-family: 'Material Symbols Outlined', sans-serif;
+      font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 48;
+    }
+    .buttons {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-top: auto;
+    }
+    button {
+      width: 100%;
+      padding: 10px 20px;
+      font-size: 15px;
+      font-weight: 600;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      font-family: 'Inter Tight', sans-serif;
+    }
+    button#add {
+      background-color: #e0e0e0;
+      color: rgba(0, 0, 0, 0.6);
+    }
+    button#add:hover {
+      background-color: #d6d6d6;
+    }
+    button#export {
+      background-color: #007bff;
+      color: white;
+    }
+    button#export:hover {
+      background-color: #0056b3;
+    }
+  </style>
+</head>
+<body>
+  <h1>
+    <strong>1. Add Frames:</strong> Select frames in Figma and click the Add button to include them in the list.<br>
+    <strong>2. Arrange:</strong> Drag and drop the frames in the list to arrange them in your preferred order.<br>
+    <strong>3. Export:</strong> Click the Export button to generate a PDF with the selected frames.
+  </h1>
+  <div id="frame-list-container">
+    <ul id="frame-list"></ul>
+    <div id="placeholder">Select frames to see them here</div>
+  </div>
+  <div class="buttons">
+    <button id="add">Add</button>
+    <button id="export">Export</button>
+  </div>
+
+  <script>
+    const frameListContainer = document.getElementById('frame-list-container');
+    const frameList = document.getElementById('frame-list');
+    const placeholder = document.getElementById('placeholder');
+    const addButton = document.getElementById('add');
+    const exportButton = document.getElementById('export');
+
+    let frames = [];
+
+    function updateFrameList(receivedFrames) {
+      frames = receivedFrames;
+      frameList.innerHTML = ''; // Clear existing list
+      if (frames.length === 0) {
+        placeholder.style.display = 'block'; // Show placeholder if no frames
+      } else {
+        placeholder.style.display = 'none'; // Hide placeholder when frames are added
+        frames.forEach((frame, index) => {
+          const li = document.createElement('li');
+          li.dataset.index = index;
+
+          // Create a div to hold frame name and delete button
+          const frameInfo = document.createElement('div');
+          frameInfo.className = 'frame-info';
+
+          const frameName = document.createElement('span');
+          frameName.textContent = frame.name;
+          frameInfo.appendChild(frameName);
+
+          const removeBtn = document.createElement('button');
+          removeBtn.className = 'remove-btn';
+          removeBtn.innerHTML = '<span class="material-symbols-outlined">close</span>';
+          removeBtn.onclick = () => {
+            // Remove frame from array and update list
+            frames = frames.filter((f) => f.id !== frame.id);
+            updateFrameList(frames);
+          };
+          frameInfo.appendChild(removeBtn);
+
+          li.appendChild(frameInfo);
+          li.draggable = true;
+
+          li.addEventListener('dragstart', (e) => {
+            e.dataTransfer.setData('text/plain', index);
+          });
+
+          li.addEventListener('dragover', (e) => e.preventDefault());
+
+          li.addEventListener('drop', (e) => {
+            e.preventDefault();
+            const draggedIndex = e.dataTransfer.getData('text/plain');
+            const targetIndex = e.target.closest('li').dataset.index;
+
+            const [draggedItem] = frames.splice(draggedIndex, 1);
+            frames.splice(targetIndex, 0, draggedItem);
+            updateFrameList(frames);
+          });
+
+          frameList.appendChild(li);
+        });
+      }
+    }
+
+    addButton.onclick = () => {
+      parent.postMessage({ pluginMessage: { type: 'add-frames' } }, '*');
+    };
+
+    exportButton.onclick = () => {
+      parent.postMessage({ pluginMessage: { type: 'export-pdf', frames } }, '*');
+    };
+
+    window.onmessage = async (event) => {
+      const message = event.data.pluginMessage;
+      if (message.type === 'update-frames') {
+        updateFrameList(message.frames); // Update list with new frames
+      } else if (message.type === 'save-pdf') {
+        const pdfDataArray = message.data.map((data) => new Uint8Array(data));
+        const pdfDoc = await PDFLib.PDFDocument.create();
+
+        for (const pdfData of pdfDataArray) {
+          const existingPdf = await PDFLib.PDFDocument.load(pdfData);
+          const copiedPages = await pdfDoc.copyPages(existingPdf, existingPdf.getPageIndices());
+          copiedPages.forEach((page) => pdfDoc.addPage(page));
+        }
+
+        const mergedPdfBytes = await pdfDoc.save();
+        const blob = new Blob([mergedPdfBytes], { type: 'application/pdf' });
+        const url = URL.createObjectURL(blob);
+
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'MergedFrames.pdf';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }
+    };
+  </script>
+</body>
+</html>
