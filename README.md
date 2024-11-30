@@ -1,40 +1,59 @@
-Below are the steps to get your plugin running. You can also find instructions at:
+# 📄 PDF Export Plugin for Figma
 
-  https://www.figma.com/plugin-docs/plugin-quickstart-guide/
+Easily select, rearrange, and export frames to a PDF directly in Figma! This plugin streamlines your workflow by eliminating the need to create extra pages or manually rearrange frames for export.
 
-This plugin template uses Typescript and NPM, two standard tools in creating JavaScript applications.
+## 🚀 Features
+- Select specific frames for export.
+- Rearrange frames intuitively.
+- Export them directly to a PDF.
 
-First, download Node.js which comes with NPM. This will allow you to install TypeScript and other
-libraries. You can find the download link here:
+## 📦 Installation & Setup
 
-  https://nodejs.org/en/download/
+### 1. Clone the Repository
+```bash
+git clone https://github.com/your-username/pdf-export.git
+cd pdf-export
+```
 
-Next, install TypeScript using the command:
+### 2. Install Dependencies
 
-  npm install -g typescript
+Ensure you have Node.js installed. Then, run:
 
-Finally, in the directory of your plugin, get the latest type definitions for the plugin API by running:
+```npm install```
 
-  npm install --save-dev @figma/plugin-typings
+### 3. Build the Plugin
 
-If you are familiar with JavaScript, TypeScript will look very familiar. In fact, valid JavaScript code
-is already valid Typescript code.
+Compile the plugin code:
 
-TypeScript adds type annotations to variables. This allows code editors such as Visual Studio Code
-to provide information about the Figma API while you are writing code, as well as help catch bugs
-you previously didn't notice.
+```npm run build ```
 
-For more information, visit https://www.typescriptlang.org/
+### ⚙️ Running the Plugin in Figma
 
-Using TypeScript requires a compiler to convert TypeScript (code.ts) into JavaScript (code.js)
-for the browser to run.
+1. Open Figma
 
-We recommend writing TypeScript code using Visual Studio code:
+Go to Plugins > Development > New Plugin in Figma.
 
-1. Download Visual Studio Code if you haven't already: https://code.visualstudio.com/.
-2. Open this directory in Visual Studio Code.
-3. Compile TypeScript to JavaScript: Run the "Terminal > Run Build Task..." menu item,
-    then select "npm: watch". You will have to do this again every time
-    you reopen Visual Studio Code.
+2. Choose the Manifest File
 
-That's it! Visual Studio Code will regenerate the JavaScript file every time you save.
+	•	Select the manifest.json file located in the root of the project folder.
+
+3. Run the Plugin
+
+	•	Once loaded, go to Plugins > Development > PDF Export Tool to launch the plugin.
+
+4. Export Your Frames
+
+	•	Select the frames you want, rearrange them as needed, and click Export to PDF in the plugin interface.
+
+🛠 Development Commands
+
+	•	npm run build: Build the production version of the plugin.
+	•	npm run watch: Watch for changes and rebuild automatically.
+
+🤝 Contributing
+
+Feel free to open issues or submit pull requests to improve the plugin. Suggestions are always welcome!
+
+📜 License
+
+This project is licensed under the MIT License.
