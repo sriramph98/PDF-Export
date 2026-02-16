@@ -3,196 +3,727 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Export Selected Frames</title>
+  <title>PDF Export</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500&display=swap" rel="stylesheet">
-  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
   <style>
-    body {
-      font-family: 'Inter Tight', sans-serif;
-      font-size: 12px;
-      color: rgba(0, 0, 0, 0.6);
-      padding: 20px;
-      background-color: #f9f9f9;
+    /* ── Reset & Base ─────────────────────────────────── */
+    *, *::before, *::after {
+      box-sizing: border-box;
       margin: 0;
+      padding: 0;
+    }
+
+    :root {
+      --color-bg: #f5f5f5;
+      --color-surface: #ffffff;
+      --color-text-primary: #1a1a1a;
+      --color-text-secondary: rgba(0, 0, 0, 0.5);
+      --color-text-tertiary: rgba(0, 0, 0, 0.35);
+      --color-border: rgba(0, 0, 0, 0.08);
+      --color-border-strong: rgba(0, 0, 0, 0.12);
+      --color-accent: #0d6efd;
+      --color-accent-hover: #0a58ca;
+      --color-secondary-bg: rgba(0, 0, 0, 0.05);
+      --color-secondary-hover: rgba(0, 0, 0, 0.08);
+      --color-danger: #dc3545;
+      --color-success: #198754;
+      --color-drag-bg: rgba(13, 110, 253, 0.04);
+      --color-drag-border: rgba(13, 110, 253, 0.2);
+
+      --radius-sm: 6px;
+      --radius-md: 8px;
+
+      --shadow-border: 0 0 0 1px var(--color-border);
+      --shadow-border-strong: 0 0 0 1px var(--color-border-strong);
+      --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
+
+      --font-weight-normal: 400;
+      --font-weight-medium: 500;
+      --font-weight-semibold: 600;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+      font-size: 13px;
+      line-height: 1.5;
+      color: var(--color-text-primary);
+      background-color: var(--color-bg);
+      padding: 16px;
       display: flex;
       flex-direction: column;
       height: 100vh;
-      box-sizing: border-box;
       overflow: hidden;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
     }
-    h1 {
+
+    /* ── Instructions ─────────────────────────────────── */
+    .instructions {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-bottom: 14px;
+    }
+
+    .step {
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
       font-size: 12px;
-      margin-bottom: 10px;
-      color: rgba(0, 0, 0, 0.6);
+      color: var(--color-text-secondary);
       line-height: 1.5;
     }
-    h1 strong {
-      color: rgba(0, 0, 0, 1);
-    }
-    #frame-list-container {
-      flex-grow: 1;
-      overflow-y: auto;
-      margin-bottom: 20px;
-      border: 1px solid #ddd;
-      border-radius: 5px;
-      background-color: #fff;
+
+    .step-number {
+      flex-shrink: 0;
+      width: 18px;
+      height: 18px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      background-color: var(--color-secondary-bg);
+      color: var(--color-text-secondary);
+      font-size: 10px;
+      font-weight: var(--font-weight-semibold);
+      font-variant-numeric: tabular-nums;
       position: relative;
-      padding: 10px;
+      top: 1px;
     }
-    #frame-list {
-      list-style-type: none;
-      padding: 0;
-      margin: 0;
+
+    .step strong {
+      color: var(--color-text-primary);
+      font-weight: var(--font-weight-medium);
     }
-    #placeholder {
+
+    /* ── Frame List Container ─────────────────────────── */
+    .frame-list-container {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+      margin-bottom: 12px;
+      border-radius: var(--radius-md);
+      background-color: var(--color-surface);
+      box-shadow: var(--shadow-border), var(--shadow-sm);
+      position: relative;
+    }
+
+    .frame-list {
+      list-style: none;
+      padding: 4px;
+    }
+
+    /* ── Placeholder ──────────────────────────────────── */
+    .placeholder {
       position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      color: rgba(0, 0, 0, 0.6);
-      font-size: 14px;
+      inset: 0;
       display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      color: var(--color-text-tertiary);
+      font-size: 13px;
       text-align: center;
+      padding: 24px;
+      user-select: none;
     }
-    li {
+
+    .placeholder.visible { display: flex; }
+
+    .placeholder-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: var(--radius-md);
+      background-color: var(--color-secondary-bg);
       display: flex;
       align-items: center;
-      justify-content: space-between;
-      padding: 10px;
-      border-bottom: 1px solid #ddd;
+      justify-content: center;
+      opacity: 0.5;
+    }
+
+    /* ── Frame Items ──────────────────────────────────── */
+    .frame-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 8px 8px 6px;
+      border-radius: var(--radius-sm);
+      cursor: grab;
+      user-select: none;
+      transition: background-color 150ms ease, box-shadow 150ms ease;
+    }
+
+    .frame-item:active { cursor: grabbing; }
+    .frame-item.dragging { opacity: 0.4; }
+
+    .frame-item.drag-over {
+      background-color: var(--color-drag-bg);
+      box-shadow: 0 0 0 1px var(--color-drag-border);
+    }
+
+    @media (hover: hover) and (pointer: fine) {
+      .frame-item:hover { background-color: var(--color-secondary-bg); }
+    }
+
+    .drag-handle {
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      color: var(--color-text-tertiary);
       cursor: grab;
     }
-    li:hover {
-      background-color: #f1f1f1;
+
+    .drag-handle svg { width: 16px; height: 16px; }
+
+    .frame-index {
+      flex-shrink: 0;
+      width: 20px;
+      height: 20px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 4px;
+      background-color: var(--color-secondary-bg);
+      color: var(--color-text-secondary);
+      font-size: 11px;
+      font-weight: var(--font-weight-medium);
+      font-variant-numeric: tabular-nums;
     }
-    .frame-info {
+
+    .frame-name {
+      flex: 1;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-size: 12px;
+      color: var(--color-text-primary);
+    }
+
+    /* ── Remove Button ────────────────────────────────── */
+    .remove-btn {
+      flex-shrink: 0;
+      width: 28px;
+      height: 28px;
+      min-width: 28px;
+      min-height: 28px;
       display: flex;
       align-items: center;
-      justify-content: space-between;
-      width: 100%;
-    }
-    .remove-btn {
-      cursor: pointer;
+      justify-content: center;
       background: none;
       border: none;
-      font-size: 20px;
-      color: rgba(0, 0, 0, 0.6);
-      padding: 0;
-      width: auto;
+      border-radius: var(--radius-sm);
+      color: var(--color-text-tertiary);
+      cursor: pointer;
+      position: relative;
+      transition: color 150ms ease, background-color 150ms ease;
+      touch-action: manipulation;
     }
-    .remove-btn:hover {
-      color: red;
+
+    .remove-btn::before { content: ''; position: absolute; inset: -8px; }
+
+    @media (hover: hover) and (pointer: fine) {
+      .remove-btn:hover {
+        color: var(--color-danger);
+        background-color: rgba(220, 53, 69, 0.06);
+      }
     }
-    .material-symbols-outlined {
-      font-family: 'Material Symbols Outlined', sans-serif;
-      font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 48;
+
+    .remove-btn:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+    .remove-btn svg { width: 14px; height: 14px; }
+
+    /* ── Keyboard Reorder ─────────────────────────────── */
+    .reorder-controls {
+      display: flex;
+      gap: 2px;
+      opacity: 0;
+      transition: opacity 150ms ease;
     }
-    .buttons {
+
+    .frame-item:focus-within .reorder-controls { opacity: 1; }
+
+    .reorder-btn {
+      width: 22px;
+      height: 22px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: none;
+      border: none;
+      border-radius: 4px;
+      color: var(--color-text-tertiary);
+      cursor: pointer;
+      touch-action: manipulation;
+    }
+
+    @media (hover: hover) and (pointer: fine) {
+      .reorder-btn:hover {
+        color: var(--color-text-primary);
+        background-color: var(--color-secondary-bg);
+      }
+    }
+
+    .reorder-btn:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 1px; }
+    .reorder-btn:disabled { opacity: 0.25; cursor: default; }
+    .reorder-btn svg { width: 12px; height: 12px; }
+
+    /* ── Settings Panel ───────────────────────────────── */
+    .settings-panel {
+      margin-bottom: 12px;
+      border-radius: var(--radius-md);
+      background-color: var(--color-surface);
+      box-shadow: var(--shadow-border), var(--shadow-sm);
+      padding: 12px;
       display: flex;
       flex-direction: column;
       gap: 10px;
-      margin-top: auto;
     }
-    button {
-      width: 100%;
-      padding: 10px 20px;
-      font-size: 15px;
-      font-weight: 600;
+
+    .setting-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .setting-label {
+      font-size: 12px;
+      color: var(--color-text-secondary);
+      white-space: nowrap;
+    }
+
+    .setting-select {
+      flex: 1;
+      max-width: 200px;
+      height: 30px;
+      padding: 0 28px 0 10px;
+      font-family: inherit;
+      font-size: 12px;
+      font-weight: var(--font-weight-medium);
+      color: var(--color-text-primary);
+      background-color: var(--color-surface);
       border: none;
-      border-radius: 5px;
+      border-radius: var(--radius-sm);
+      box-shadow: var(--shadow-border-strong);
       cursor: pointer;
-      font-family: 'Inter Tight', sans-serif;
+      appearance: none;
+      -webkit-appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23999' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 10px center;
+      background-size: 10px;
+      touch-action: manipulation;
+      transition: box-shadow 150ms ease;
     }
-    button#add {
-      background-color: #e0e0e0;
-      color: rgba(0, 0, 0, 0.6);
+
+    .setting-select:focus-visible {
+      outline: none;
+      box-shadow: 0 0 0 2px var(--color-accent);
     }
-    button#add:hover {
-      background-color: #d6d6d6;
+
+    /* ── Checkbox ─────────────────────────────────────── */
+    .checkbox-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      font-size: 12px;
+      color: var(--color-text-secondary);
+      padding: 2px 0;
     }
-    button#export {
-      background-color: #007bff;
-      color: white;
+
+    .checkbox-row input[type="checkbox"] {
+      width: 14px;
+      height: 14px;
+      accent-color: var(--color-accent);
+      cursor: pointer;
+      flex-shrink: 0;
     }
-    button#export:hover {
-      background-color: #0056b3;
+
+    /* ── Action Buttons ───────────────────────────────── */
+    .actions {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .btn {
+      width: 100%;
+      min-height: 36px;
+      padding: 8px 16px;
+      font-size: 13px;
+      font-weight: var(--font-weight-medium);
+      font-family: inherit;
+      border: none;
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      touch-action: manipulation;
+      transition: background-color 150ms ease, transform 100ms ease;
+    }
+
+    .btn:active:not(:disabled) { transform: scale(0.97); }
+    .btn:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+    .btn:disabled { opacity: 0.5; cursor: default; }
+
+    .btn-secondary {
+      background-color: var(--color-secondary-bg);
+      color: var(--color-text-primary);
+    }
+
+    @media (hover: hover) and (pointer: fine) {
+      .btn-secondary:not(:disabled):hover { background-color: var(--color-secondary-hover); }
+    }
+
+    .btn-primary {
+      background-color: var(--color-accent);
+      color: #ffffff;
+    }
+
+    @media (hover: hover) and (pointer: fine) {
+      .btn-primary:not(:disabled):hover { background-color: var(--color-accent-hover); }
+    }
+
+    .btn-icon { width: 16px; height: 16px; flex-shrink: 0; }
+
+    /* ── Progress ─────────────────────────────────────── */
+    .progress-section {
+      margin-top: 8px;
+      display: none;
+    }
+
+    .progress-section.visible { display: block; }
+
+    .progress-track {
+      height: 3px;
+      border-radius: 2px;
+      background: var(--color-secondary-bg);
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      border-radius: 2px;
+      background: var(--color-accent);
+      width: 0%;
+      transition: width 200ms ease-out;
+    }
+
+    .progress-status {
+      font-size: 11px;
+      color: var(--color-text-tertiary);
+      margin-top: 4px;
+      min-height: 16px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .progress-status.success { color: var(--color-success); }
+
+    /* ── Frame count ──────────────────────────────────── */
+    .frame-count {
+      font-size: 11px;
+      font-weight: var(--font-weight-medium);
+      color: var(--color-text-tertiary);
+      font-variant-numeric: tabular-nums;
+      margin-bottom: 6px;
+      padding-left: 2px;
+      min-height: 17px;
+    }
+
+    /* ── Reduced Motion ───────────────────────────────── */
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation: none !important;
+        transition: none !important;
+      }
     }
   </style>
 </head>
 <body>
-  <h1>
-    <strong>1. Add Frames:</strong> Select frames in Figma and click the Add button to include them in the list.<br>
-    <strong>2. Arrange:</strong> Drag and drop the frames in the list to arrange them in your preferred order.<br>
-    <strong>3. Export:</strong> Click the Export button to generate a PDF with the selected frames.
-  </h1>
-  <div id="frame-list-container">
-    <ul id="frame-list"></ul>
-    <div id="placeholder">Select frames to see them here</div>
+  <!-- ── Instructions ──────────────────────────────── -->
+  <div class="instructions">
+    <div class="step">
+      <span class="step-number">1</span>
+      <span><strong>Add</strong> Select frames in Figma, then click Add.</span>
+    </div>
+    <div class="step">
+      <span class="step-number">2</span>
+      <span><strong>Arrange</strong> Drag to reorder frames in your preferred order.</span>
+    </div>
+    <div class="step">
+      <span class="step-number">3</span>
+      <span><strong>Export</strong> Choose settings and export the PDF.</span>
+    </div>
   </div>
-  <div class="buttons">
-    <button id="add">Add</button>
-    <button id="export">Export</button>
+
+  <div class="frame-count" id="frame-count"></div>
+
+  <!-- ── Frame List ────────────────────────────────── -->
+  <div class="frame-list-container">
+    <ul class="frame-list" id="frame-list" role="list"></ul>
+    <div class="placeholder visible" id="placeholder">
+      <div class="placeholder-icon">
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="3" width="14" height="14" rx="2" />
+          <line x1="10" y1="7" x2="10" y2="13" />
+          <line x1="7" y1="10" x2="13" y2="10" />
+        </svg>
+      </div>
+      <span>Select frames in Figma and click Add</span>
+    </div>
+  </div>
+
+  <!-- ── Export Settings ───────────────────────────── -->
+  <div class="settings-panel">
+    <div class="setting-row">
+      <label class="setting-label" for="color-profile">Color profile</label>
+      <select class="setting-select" id="color-profile">
+        <option value="DOCUMENT" selected>sRGB (same as file)</option>
+        <option value="SRGB">sRGB</option>
+        <option value="DISPLAY_P3_V4">Display P3</option>
+      </select>
+    </div>
+
+    <label class="checkbox-row">
+      <input type="checkbox" id="metadata-checkbox" checked>
+      <span>Preserve file metadata</span>
+    </label>
+  </div>
+
+  <!-- ── Actions ───────────────────────────────────── -->
+  <div class="actions">
+    <button class="btn btn-secondary" id="add" type="button">
+      <svg class="btn-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+        <line x1="8" y1="3" x2="8" y2="13" />
+        <line x1="3" y1="8" x2="13" y2="8" />
+      </svg>
+      Add Selected Frames
+    </button>
+    <button class="btn btn-primary" id="export" type="button">
+      <svg class="btn-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M2 11v2.5A1.5 1.5 0 003.5 15h9a1.5 1.5 0 001.5-1.5V11" />
+        <polyline points="4.5 6.5 8 10 11.5 6.5" />
+        <line x1="8" y1="1" x2="8" y2="10" />
+      </svg>
+      Export PDF
+    </button>
+  </div>
+
+  <!-- ── Progress ──────────────────────────────────── -->
+  <div class="progress-section" id="progress-section">
+    <div class="progress-track">
+      <div class="progress-fill" id="progress-fill"></div>
+    </div>
+    <div class="progress-status" id="progress-status"></div>
   </div>
 
   <script>
-    const frameListContainer = document.getElementById('frame-list-container');
-    const frameList = document.getElementById('frame-list');
-    const placeholder = document.getElementById('placeholder');
-    const addButton = document.getElementById('add');
-    const exportButton = document.getElementById('export');
+    /* ═══════════════════════════════════════════════════
+       DOM References
+       ═══════════════════════════════════════════════════ */
+    var frameList       = document.getElementById('frame-list');
+    var placeholder     = document.getElementById('placeholder');
+    var addButton       = document.getElementById('add');
+    var exportButton    = document.getElementById('export');
+    var frameCountEl    = document.getElementById('frame-count');
+    var colorProfileSel = document.getElementById('color-profile');
+    var metadataCheck   = document.getElementById('metadata-checkbox');
+    var progressSection = document.getElementById('progress-section');
+    var progressFill    = document.getElementById('progress-fill');
+    var progressStatus  = document.getElementById('progress-status');
 
-    let frames = [];
+    var EXPORT_BTN_HTML =
+      '<svg class="btn-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">' +
+      '<path d="M2 11v2.5A1.5 1.5 0 003.5 15h9a1.5 1.5 0 001.5-1.5V11"/>' +
+      '<polyline points="4.5 6.5 8 10 11.5 6.5"/>' +
+      '<line x1="8" y1="1" x2="8" y2="10"/>' +
+      '</svg>Export PDF';
+
+    /* ═══════════════════════════════════════════════════
+       State
+       ═══════════════════════════════════════════════════ */
+    var frames      = [];
+    var isExporting = false;
+    var dragSrcIndex = null;
+
+    function getSettings() {
+      return {
+        colorProfile:     colorProfileSel.value,
+        preserveMetadata: metadataCheck.checked
+      };
+    }
+
+    /* ═══════════════════════════════════════════════════
+       Progress Helpers
+       ═══════════════════════════════════════════════════ */
+
+    function showProgress(pct, text) {
+      progressSection.classList.add('visible');
+      progressFill.style.width = pct + '%';
+      progressStatus.textContent = text;
+      progressStatus.className = 'progress-status';
+    }
+
+    function showSuccess(text) {
+      progressSection.classList.add('visible');
+      progressFill.style.width = '100%';
+      progressStatus.textContent = text;
+      progressStatus.className = 'progress-status success';
+    }
+
+    function hideProgress() {
+      progressSection.classList.remove('visible');
+      progressFill.style.width = '0%';
+      progressStatus.textContent = '';
+    }
+
+    function formatBytes(bytes) {
+      if (bytes < 1024) return bytes + ' B';
+      if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+      return (bytes / 1048576).toFixed(2) + ' MB';
+    }
+
+    /* ═══════════════════════════════════════════════════
+       Frame Count
+       ═══════════════════════════════════════════════════ */
+
+    function updateFrameCount() {
+      if (frames.length === 0) {
+        frameCountEl.textContent = '';
+      } else {
+        frameCountEl.textContent = frames.length === 1 ? '1 frame' : frames.length + ' frames';
+      }
+    }
+
+    /* ═══════════════════════════════════════════════════
+       Frame List
+       ═══════════════════════════════════════════════════ */
 
     function updateFrameList(receivedFrames) {
       frames = receivedFrames;
-      frameList.innerHTML = ''; // Clear existing list
+      frameList.innerHTML = '';
+      updateFrameCount();
+
       if (frames.length === 0) {
-        placeholder.style.display = 'block'; // Show placeholder if no frames
+        placeholder.classList.add('visible');
+        exportButton.disabled = true;
       } else {
-        placeholder.style.display = 'none'; // Hide placeholder when frames are added
-        frames.forEach((frame, index) => {
-          const li = document.createElement('li');
+        placeholder.classList.remove('visible');
+        exportButton.disabled = false;
+
+        frames.forEach(function (frame, index) {
+          var li = document.createElement('li');
+          li.className = 'frame-item';
           li.dataset.index = index;
+          li.draggable = true;
+          li.setAttribute('role', 'listitem');
 
-          // Create a div to hold frame name and delete button
-          const frameInfo = document.createElement('div');
-          frameInfo.className = 'frame-info';
+          var handle = document.createElement('span');
+          handle.className = 'drag-handle';
+          handle.setAttribute('aria-hidden', 'true');
+          handle.innerHTML = '<svg viewBox="0 0 16 16" fill="currentColor"><circle cx="6" cy="4" r="1.2"/><circle cx="10" cy="4" r="1.2"/><circle cx="6" cy="8" r="1.2"/><circle cx="10" cy="8" r="1.2"/><circle cx="6" cy="12" r="1.2"/><circle cx="10" cy="12" r="1.2"/></svg>';
+          li.appendChild(handle);
 
-          const frameName = document.createElement('span');
-          frameName.textContent = frame.name;
-          frameInfo.appendChild(frameName);
+          var indexBadge = document.createElement('span');
+          indexBadge.className = 'frame-index';
+          indexBadge.textContent = index + 1;
+          li.appendChild(indexBadge);
 
-          const removeBtn = document.createElement('button');
+          var nameSpan = document.createElement('span');
+          nameSpan.className = 'frame-name';
+          nameSpan.textContent = frame.name;
+          nameSpan.title = frame.name;
+          li.appendChild(nameSpan);
+
+          var reorderControls = document.createElement('span');
+          reorderControls.className = 'reorder-controls';
+
+          var upBtn = document.createElement('button');
+          upBtn.className = 'reorder-btn';
+          upBtn.type = 'button';
+          upBtn.setAttribute('aria-label', 'Move ' + frame.name + ' up');
+          upBtn.disabled = index === 0;
+          upBtn.innerHTML = '<svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="2.5 7.5 6 4 9.5 7.5"/></svg>';
+          upBtn.onclick = function (e) {
+            e.stopPropagation();
+            if (index > 0) {
+              var t = frames[index]; frames[index] = frames[index - 1]; frames[index - 1] = t;
+              updateFrameList(frames);
+            }
+          };
+          reorderControls.appendChild(upBtn);
+
+          var downBtn = document.createElement('button');
+          downBtn.className = 'reorder-btn';
+          downBtn.type = 'button';
+          downBtn.setAttribute('aria-label', 'Move ' + frame.name + ' down');
+          downBtn.disabled = index === frames.length - 1;
+          downBtn.innerHTML = '<svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="2.5 4.5 6 8 9.5 4.5"/></svg>';
+          downBtn.onclick = function (e) {
+            e.stopPropagation();
+            if (index < frames.length - 1) {
+              var t = frames[index]; frames[index] = frames[index + 1]; frames[index + 1] = t;
+              updateFrameList(frames);
+            }
+          };
+          reorderControls.appendChild(downBtn);
+          li.appendChild(reorderControls);
+
+          var removeBtn = document.createElement('button');
           removeBtn.className = 'remove-btn';
-          removeBtn.innerHTML = '<span class="material-symbols-outlined">close</span>';
-          removeBtn.onclick = () => {
-            // Remove frame from array and update list
-            frames = frames.filter((f) => f.id !== frame.id);
+          removeBtn.type = 'button';
+          removeBtn.setAttribute('aria-label', 'Remove ' + frame.name);
+          removeBtn.innerHTML = '<svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><line x1="3.5" y1="3.5" x2="10.5" y2="10.5"/><line x1="10.5" y1="3.5" x2="3.5" y2="10.5"/></svg>';
+          removeBtn.onclick = function (e) {
+            e.stopPropagation();
+            frames = frames.filter(function (f) { return f.id !== frame.id; });
             updateFrameList(frames);
-
-            // Notify parent (Code.ts) to sync frame removal
             parent.postMessage({ pluginMessage: { type: 'remove-frame', frameId: frame.id } }, '*');
           };
-          frameInfo.appendChild(removeBtn);
+          li.appendChild(removeBtn);
 
-          li.appendChild(frameInfo);
-          li.draggable = true;
-
-          li.addEventListener('dragstart', (e) => {
-            e.dataTransfer.setData('text/plain', index);
+          li.addEventListener('dragstart', function (e) {
+            dragSrcIndex = index;
+            li.classList.add('dragging');
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/plain', String(index));
           });
 
-          li.addEventListener('dragover', (e) => e.preventDefault());
+          li.addEventListener('dragend', function () {
+            li.classList.remove('dragging');
+            dragSrcIndex = null;
+            frameList.querySelectorAll('.frame-item').forEach(function (el) { el.classList.remove('drag-over'); });
+          });
 
-          li.addEventListener('drop', (e) => {
+          li.addEventListener('dragover', function (e) {
             e.preventDefault();
-            const draggedIndex = e.dataTransfer.getData('text/plain');
-            const targetIndex = e.target.closest('li').dataset.index;
+            e.dataTransfer.dropEffect = 'move';
+            var t = e.target.closest('.frame-item');
+            if (t && Number(t.dataset.index) !== dragSrcIndex) t.classList.add('drag-over');
+          });
 
-            const [draggedItem] = frames.splice(draggedIndex, 1);
-            frames.splice(targetIndex, 0, draggedItem);
-            updateFrameList(frames);
+          li.addEventListener('dragleave', function (e) {
+            var t = e.target.closest('.frame-item');
+            if (t) t.classList.remove('drag-over');
+          });
+
+          li.addEventListener('drop', function (e) {
+            e.preventDefault();
+            var t = e.target.closest('.frame-item');
+            if (!t) return;
+            t.classList.remove('drag-over');
+            var from = parseInt(e.dataTransfer.getData('text/plain'), 10);
+            var to   = parseInt(t.dataset.index, 10);
+            if (from !== to) {
+              var item = frames.splice(from, 1)[0];
+              frames.splice(to, 0, item);
+              updateFrameList(frames);
+            }
           });
 
           frameList.appendChild(li);
@@ -200,41 +731,113 @@
       }
     }
 
-    addButton.onclick = () => {
+    /* ═══════════════════════════════════════════════════
+       Button Handlers
+       ═══════════════════════════════════════════════════ */
+
+    addButton.onclick = function () {
       parent.postMessage({ pluginMessage: { type: 'add-frames' } }, '*');
     };
 
-    exportButton.onclick = () => {
-      parent.postMessage({ pluginMessage: { type: 'export-pdf', frames } }, '*');
+    exportButton.onclick = function () {
+      if (isExporting || frames.length === 0) return;
+      isExporting = true;
+      exportButton.disabled = true;
+      exportButton.textContent = 'Exporting\u2026';
+      showProgress(0, 'Preparing\u2026');
+
+      var settings = getSettings();
+      parent.postMessage({
+        pluginMessage: { type: 'export-pdf', frames: frames, settings: settings }
+      }, '*');
     };
 
-    window.onmessage = async (event) => {
-      const message = event.data.pluginMessage;
+    /* ═══════════════════════════════════════════════════
+       Message Handler
+       ═══════════════════════════════════════════════════ */
+
+    window.onmessage = async function (event) {
+      var message = event.data.pluginMessage;
+      if (!message) return;
+
       if (message.type === 'update-frames') {
-        updateFrameList(message.frames); // Update list with new frames
+        updateFrameList(message.frames);
+
+      } else if (message.type === 'export-progress') {
+        var pct = Math.round((message.current / message.total) * 60);
+        showProgress(pct, 'Exporting frame ' + (message.current + 1) + ' of ' + message.total + '\u2026');
+
+      } else if (message.type === 'export-error') {
+        isExporting = false;
+        exportButton.disabled = frames.length === 0;
+        exportButton.innerHTML = EXPORT_BTN_HTML;
+        hideProgress();
+
       } else if (message.type === 'save-pdf') {
-        const pdfDataArray = message.data.map((data) => new Uint8Array(data));
-        const pdfDoc = await PDFLib.PDFDocument.create();
+        try {
+          var pagesData = message.pages;
+          var metadata  = message.metadata;
+          var finalBytes;
+          var fileName = (metadata && metadata.title ? metadata.title : 'Export') + '.pdf';
 
-        for (const pdfData of pdfDataArray) {
-          const existingPdf = await PDFLib.PDFDocument.load(pdfData);
-          const copiedPages = await pdfDoc.copyPages(existingPdf, existingPdf.getPageIndices());
-          copiedPages.forEach((page) => pdfDoc.addPage(page));
+          if (pagesData.length === 1 && !metadata) {
+            /* Single frame, no metadata — Figma's raw PDF bytes */
+            showProgress(80, 'Preparing download\u2026');
+            finalBytes = new Uint8Array(pagesData[0]);
+
+          } else {
+            /* Multiple frames — pdf-lib merges pages in order */
+            showProgress(65, 'Merging pages\u2026');
+
+            var pdfDoc = await PDFLib.PDFDocument.create();
+
+            for (var i = 0; i < pagesData.length; i++) {
+              var src   = await PDFLib.PDFDocument.load(new Uint8Array(pagesData[i]));
+              var pages = await pdfDoc.copyPages(src, src.getPageIndices());
+              pages.forEach(function (p) { pdfDoc.addPage(p); });
+            }
+
+            if (metadata) {
+              showProgress(80, 'Setting metadata\u2026');
+              if (metadata.title)    pdfDoc.setTitle(metadata.title);
+              if (metadata.creator)  pdfDoc.setCreator(metadata.creator);
+              if (metadata.producer) pdfDoc.setProducer(metadata.producer);
+              pdfDoc.setCreationDate(new Date(metadata.creationDate));
+              pdfDoc.setModificationDate(new Date());
+            }
+
+            showProgress(88, 'Saving\u2026');
+            finalBytes = await pdfDoc.save();
+          }
+
+          showProgress(95, 'Downloading\u2026');
+          var blob = new Blob([finalBytes], { type: 'application/pdf' });
+          var url  = URL.createObjectURL(blob);
+          var a    = document.createElement('a');
+          a.href     = url;
+          a.download = fileName;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+
+          showSuccess('Exported ' + formatBytes(finalBytes.length));
+
+        } catch (err) {
+          console.error('PDF export failed:', err);
+          showProgress(100, 'Export failed. Check console for details.');
+        } finally {
+          isExporting = false;
+          exportButton.disabled = frames.length === 0;
+          exportButton.innerHTML = EXPORT_BTN_HTML;
         }
-
-        const mergedPdfBytes = await pdfDoc.save();
-        const blob = new Blob([mergedPdfBytes], { type: 'application/pdf' });
-        const url = URL.createObjectURL(blob);
-
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'MergedFrames.pdf';
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
       }
     };
+
+    /* ═══════════════════════════════════════════════════
+       Init
+       ═══════════════════════════════════════════════════ */
+    exportButton.disabled = true;
   </script>
 </body>
 </html>
